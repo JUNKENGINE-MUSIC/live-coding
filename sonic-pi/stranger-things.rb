@@ -1,0 +1,11 @@
+use_synth :prophet
+play :C
+sleep 0.25
+play :E
+sleep 0.25
+play :G
+sleep 0.25
+play :B
+sleep 0.25
+play :C
+sleep 0.25
