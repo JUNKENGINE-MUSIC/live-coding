@@ -1,0 +1,5 @@
+// by Rodrigo Velasco
+// https://yecto.github.io/
+s0.initScreen()
+src(s0).out(o1)
+osc(40, 0.1, 1) .modulate(src(o0), 0.1) .scale(1.1).diff(o1) .rotate(0.04) .out(o0)
