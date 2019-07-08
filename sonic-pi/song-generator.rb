@@ -1,12 +1,13 @@
 t = Time.now.to_i
 use_random_seed t
-beats_per_measure = 4
+beats_per_measure = choose([4, 8])
 # 4 = 16th notes, 3 might be triplets, 2 is 8th
-subdivision = 4
-tempo = rrand(30, 200)
-use_bpm = tempo
-key = :c
-mode = :major
+subdivision = choose([1, 2, 3, 4])
+tempo = rrand(30, 180)
+use_bpm tempo
+bass_synth = choose([:blade, :dark_ambience, :dsaw, :fm, :mod_saw, :subpulse, :tb303])
+key = choose([:c, :cs, :d, :eb, :e, :f, :fs, :g, :ab, :a, :bb, :b])
+mode = choose([:major_pentatonic, :minor_pentatonic])
 BassDrumSamples = [:bd_ada, :bd_pure, :bd_808, :bd_zum, :bd_gas, :bd_sone, :bd_haus, :bd_zome, :bd_boom, :bd_klub, :bd_fat, :bd_tek, :bd_mehackit, :drum_heavy_kick, :drum_bass_soft, :drum_bass_hard, :elec_soft_kick, :elec_hollow_kick]
 SnareDrumSamples =[:sn_dub, :sn_dolf, :sn_zome, :sn_generic, :drum_snare_hard, :drum_snare_soft, :elec_snare, :elec_lo_snare, :elec_hi_snare, :elec_mid_snare, :elec_filt_snare]
 MidDrumSamples = [:drum_tom_mid_soft, :drum_tom_mid_hard, :drum_tom_lo_soft, :drum_tom_lo_hard, :drum_tom_hi_soft, :drum_tom_hi_hard, :drum_cowbell, :elec_fuzz_tom, :elec_bong, :elec_twang, :elec_wood, :elec_bell, :elec_flip, :elec_tick, :elec_plip]
@@ -15,11 +16,9 @@ CrashDrumSamples = [:drum_splash_soft, :drum_splash_hard, :drum_cymbal_soft, :dr
 HHDrumSamples = [:drum_cymbal_closed, :drum_cymbal_pedal]
 
 # todo: sort glitchy, mehackit, misc, percussive, tabla
-drum_bass = choose(BassDrumSamples)
-drum_snare = choose(SnareDrumSamples)
-drum_hh = choose(HHDrumSamples)
 
 define :make_kick do |beats|
+  drum_bass = choose(BassDrumSamples)
   result = []
   beats *= subdivision
   beats.times do |i|
@@ -29,6 +28,7 @@ define :make_kick do |beats|
 end
 
 define :make_snare do |beats|
+  drum_snare = choose(SnareDrumSamples)
   result = []
   beats *= subdivision
   beats.times do |i|
@@ -38,10 +38,11 @@ define :make_snare do |beats|
 end
 
 define :make_hh do |beats|
+  drum_hh = choose(HHDrumSamples)
   result = []
   beats *= subdivision
   beats.times do |i|
-    result.push(choose(HHDrumSamples+[nil]))
+    result.push(choose(HHDrumSamples+HighDrumSamples+[nil]*4))
   end
   return result
 end
@@ -56,33 +57,57 @@ define :make_melody do |beats|
 end
 
 phrase_length = 8
-kick_A = make_kick(phrase_length)
-snare_A = make_snare(phrase_length)
-hh_A = make_hh(phrase_length)
-melody = make_melody(phrase_length)
 
-live_loop :drum_loop do
-  cue :one
-  (phrase_length*subdivision).times do |i|
-    sample kick_A[i], pan: rrand(-1, 1)
-    sample snare_A[i], amp: rrand(0, 1), pan: rrand(-1, 1)
-    sample hh_A[i], amp: rrand(0, 0.5), pan: rrand(-1, 1)
-    sleep 1.0/(beats_per_measure*subdivision)
-  end
+kick_list = []
+snare_list = []
+hh_list = []
+melody_list = []
+
+sections = rrand_i(2, 6)
+
+sections.times do |i|
+  kick_list.push(make_kick(phrase_length))
+  snare_list.push(make_snare(phrase_length))
+  hh_list.push(make_hh(phrase_length))
+  melody_list.push(make_melody(phrase_length))
 end
 
-live_loop :bass_loop do
-  sync :one
-  current_note = :c1
-  (phrase_length*subdivision).times do |i|
-    if kick_A[i]
-      #play current_note, amp: 0.6
-      with_synth :subpulse do
-        #play current_note, amp: 0.3
+song = []
+
+rrand_i(32, 128).times do |i|
+  song.push(rrand_i(0, sections-1))
+end
+
+live_loop :drum_loop do
+  # todo: correct to drum and bass
+  with_fx :reverb do
+    song.each do |sect|
+      kick = kick_list[sect]
+      snare = snare_list[sect]
+      hh = hh_list[sect]
+      cue :one
+      (phrase_length*subdivision).times do |i|
+        sample kick[i], pan: rrand(-1, 1)
+        sample snare[i], amp: rrand(0.3, 0.7), pan: rrand(-1, 1)
+        sample hh[i], amp: rrand(0, 0.5), pan: rrand(-1, 1)
+        
+        # bass
+        if kick[i]
+          current_note = choose(scale(note(key, octave: 1), mode))
+          with_synth :sine do
+            play current_note, amp: 0.6, release: 1.0/(beats_per_measure*subdivision)*1.0
+          end
+          with_synth bass_synth do
+            play current_note, amp: 0.2, release: 1.0/(beats_per_measure*subdivision)*1.0
+          end
+        end
+        sleep 1.0/(beats_per_measure*subdivision)
       end
     end
-    sleep 1.0/(beats_per_measure*subdivision)
   end
+  puts song
+  puts sections
+  stop
 end
 
 melody_attack = 0
@@ -97,4 +122,3 @@ live_loop :melody_loop do
   end
 end
 
-puts melody
