@@ -1,0 +1,23 @@
+a.setBins(3)
+a.show()
+
+noise(1,.01)
+	.kaleid(2)
+	.color(5,255,255)
+	.color(1,.5,0)
+	.scrollX(.75, .25)
+	.scrollY(.75, .5)
+	.scale(.05)
+	.modulate(o0,.0001)
+	.blend(
+  		voronoi(10)
+  		.kaleid(10)
+  		.modulate(
+          osc(25,.1,.5).kaleid(100),.5
+        )
+  		.color(0,0,1)
+  		.saturate()
+	)
+	.kaleid(4.5)
+	.mult(voronoi(3))
+  	.out(o0)
